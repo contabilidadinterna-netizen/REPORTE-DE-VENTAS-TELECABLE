@@ -119,7 +119,7 @@ document.getElementById("addClienteBtn").addEventListener("click", ()=>{
     </div>
     <div><label>Observaciones</label><input type="text"></div>
   `;
-  setTimeout(()=>wrapper.appendChild(card),50);
+  wrapper.appendChild(card);
   card.scrollIntoView({behavior:'smooth'});
 });
 
@@ -163,13 +163,11 @@ form.addEventListener("submit", async e=>{
     clientes: clientes
   };
 
-  // Enviar a Google Script
+  // Enviar a Google Script usando FormData
+  const formData = new FormData();
+  formData.append("data", JSON.stringify(data));
   try{
-    await fetch(GOOGLE_SCRIPT_URL, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify(data)
-    });
+    await fetch(GOOGLE_SCRIPT_URL, { method:"POST", body: formData });
     alert("Datos enviados correctamente al servidor.");
   }catch(err){
     console.error(err);
@@ -210,3 +208,5 @@ form.addEventListener("submit", async e=>{
 </script>
 </body>
 </html>
+
+
