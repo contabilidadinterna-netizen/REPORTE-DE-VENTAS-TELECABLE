@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reporte Diario de Ventas - Telecable</title>
 <style>
 :root{
@@ -98,6 +98,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQQxLlqklVvN
 
 let clienteCount=0;
 const wrapper=document.getElementById("clientesWrapper");
+const form=document.getElementById("reporteForm");
 
 document.getElementById("addClienteBtn").addEventListener("click", ()=>{
   clienteCount++;
@@ -105,11 +106,11 @@ document.getElementById("addClienteBtn").addEventListener("click", ()=>{
   card.classList.add("cliente-card");
   card.innerHTML=`
     <label>Cliente #${clienteCount}</label>
-    <div><label>Nombre</label><input name="cliente_nombre"></div>
-    <div><label>Dirección</label><input name="cliente_direccion"></div>
-    <div><label>Teléfono</label><input name="cliente_telefono"></div>
+    <div><label>Nombre</label><input data-key="nombre"></div>
+    <div><label>Dirección</label><input data-key="direccion"></div>
+    <div><label>Teléfono</label><input data-key="telefono"></div>
     <div><label>Servicio</label>
-      <select name="cliente_servicio">
+      <select data-key="servicio">
         <option value="">Seleccione...</option>
         <option>Dúo Internet + TV</option>
         <option>Solo Internet</option>
@@ -117,17 +118,31 @@ document.getElementById("addClienteBtn").addEventListener("click", ()=>{
         <option>Otro</option>
       </select>
     </div>
-    <div><label>Observaciones</label><input name="cliente_obs"></div>
+    <div><label>Observaciones</label><input data-key="obs"></div>
   `;
   wrapper.appendChild(card);
   card.scrollIntoView({behavior:'smooth'});
 });
 
-const form=document.getElementById("reporteForm");
-const enviarBtn=document.getElementById("submitBtn");
+// Función para crear inputs ocultos para clientes
+function agregarClienteInputsHidden() {
+  document.querySelectorAll('.cliente-hidden').forEach(el=>el.remove());
+  document.querySelectorAll(".cliente-card").forEach((c,i)=>{
+    const campos = c.querySelectorAll("[data-key]");
+    campos.forEach(campo=>{
+      const input = document.createElement("input");
+      input.type="hidden";
+      input.name = `clientes[${i}][${campo.dataset.key}]`;
+      input.value = campo.value;
+      input.classList.add("cliente-hidden");
+      form.appendChild(input);
+    });
+  });
+}
 
-form.addEventListener("submit", async e=>{
+document.getElementById("reporteForm").addEventListener("submit", async e=>{
   e.preventDefault();
+
   if(!document.getElementById("dni").value.trim()||
      !document.getElementById("fecha").value||
      !document.getElementById("turno").value||
@@ -136,38 +151,13 @@ form.addEventListener("submit", async e=>{
     alert("Por favor completa los datos del vendedor.");
     return;
   }
-  enviarBtn.classList.add("bounce");
-  setTimeout(()=>enviarBtn.classList.remove("bounce"),420);
 
-  // Clientes
-  const clientes = [];
-  document.querySelectorAll(".cliente-card").forEach(c=>{
-    const inputs = c.querySelectorAll("input, select");
-    clientes.push({
-      nombre: inputs[0].value,
-      direccion: inputs[1].value,
-      telefono: inputs[2].value,
-      servicio: inputs[3].value,
-      obs: inputs[4].value
-    });
-  });
+  document.getElementById("submitBtn").classList.add("bounce");
+  setTimeout(()=>document.getElementById("submitBtn").classList.remove("bounce"),420);
 
-  // Datos principales
-  const data = {
-    dni: document.getElementById("dni").value,
-    fecha: document.getElementById("fecha").value,
-    turno: document.getElementById("turno").value,
-    ciudad: document.getElementById("ciudad").value,
-    vendedor: document.getElementById("vendedor").value,
-    zona: document.getElementById("zona").value,
-    nap: document.getElementById("nap").value,
-    comentarios: document.getElementById("comentarios").value,
-    clientes: clientes
-  };
+  agregarClienteInputsHidden(); // agrega clientes al form
 
-  // Enviar a Google Script
   const formData = new FormData(form);
-  formData.append("clientes", JSON.stringify(clientes));
   try{
     await fetch(GOOGLE_SCRIPT_URL, { method:"POST", body: formData });
     alert("Datos enviados correctamente al servidor.");
@@ -184,6 +174,7 @@ form.addEventListener("submit", async e=>{
   doc.text("Reporte Diario de Ventas - Telecable",10,y);
   y+=10;
   doc.setFontSize(10);
+  const data = Object.fromEntries(formData);
   doc.text(`DNI: ${data.dni}`,10,y+=10);
   doc.text(`Fecha: ${data.fecha}`,100,y);
   doc.text(`Turno: ${data.turno}`,10,y+=10);
@@ -194,11 +185,20 @@ form.addEventListener("submit", async e=>{
   doc.text("Comentarios:",10,y+=10);
   doc.text(data.comentarios||"-",10,y+=10);
   y+=10;
-  doc.text("Clientes:",10,y);
-  data.clientes.forEach((c,i)=>{
-    y+=6;
-    doc.text(`${i+1}. ${c.nombre} | ${c.direccion} | ${c.telefono} | ${c.servicio} | ${c.obs}`,10,y);
-  });
+  if(clienteCount>0){
+    doc.text("Clientes:",10,y);
+    let index=0;
+    while(formData.has(`clientes[${index}][nombre]`)){
+      const cNombre = formData.get(`clientes[${index}][nombre]`);
+      const cDireccion = formData.get(`clientes[${index}][direccion]`);
+      const cTelefono = formData.get(`clientes[${index}][telefono]`);
+      const cServicio = formData.get(`clientes[${index}][servicio]`);
+      const cObs = formData.get(`clientes[${index}][obs]`);
+      y+=6;
+      doc.text(`${index+1}. ${cNombre} | ${cDireccion} | ${cTelefono} | ${cServicio} | ${cObs}`,10,y);
+      index++;
+    }
+  }
 
   form.reset();
   wrapper.innerHTML='';
