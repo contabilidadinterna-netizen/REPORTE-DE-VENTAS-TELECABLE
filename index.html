@@ -70,10 +70,10 @@ textarea{min-height:110px; resize:vertical; font-size:15px;}
         </select>
       </div>
     </div>
-    <div><label for="vendedor">👤 Nombre del Vendedor(a)</label><input id="vendedor" required></div>
+    <div><label for="vendedor">👤 Nombre del Vendedor(a)</label><input id="vendedor" name="vendedor" required></div>
     <div class="grid-2">
-      <div><label for="zona">📍 Zona / Sector</label><input id="zona"></div>
-      <div><label for="nap">🔌 Caja NAP</label><input id="nap"></div>
+      <div><label for="zona">📍 Zona / Sector</label><input id="zona" name="zona"></div>
+      <div><label for="nap">🔌 Caja NAP</label><input id="nap" name="nap"></div>
     </div>
 
     <h3>Clientes Visitados</h3>
@@ -86,7 +86,7 @@ textarea{min-height:110px; resize:vertical; font-size:15px;}
 
     <h3>Resultado del Turno</h3>
     <label for="comentarios">📝 Comentarios generales</label>
-    <textarea id="comentarios"></textarea>
+    <textarea id="comentarios" name="comentarios"></textarea>
 
     <button type="submit" class="btn submit" id="submitBtn">📤 Enviar y Descargar</button>
   </form>
@@ -105,11 +105,11 @@ document.getElementById("addClienteBtn").addEventListener("click", ()=>{
   card.classList.add("cliente-card");
   card.innerHTML=`
     <label>Cliente #${clienteCount}</label>
-    <div><label>Nombre</label><input type="text"></div>
-    <div><label>Dirección</label><input type="text"></div>
-    <div><label>Teléfono</label><input type="text"></div>
+    <div><label>Nombre</label><input name="cliente_nombre"></div>
+    <div><label>Dirección</label><input name="cliente_direccion"></div>
+    <div><label>Teléfono</label><input name="cliente_telefono"></div>
     <div><label>Servicio</label>
-      <select>
+      <select name="cliente_servicio">
         <option value="">Seleccione...</option>
         <option>Dúo Internet + TV</option>
         <option>Solo Internet</option>
@@ -117,7 +117,7 @@ document.getElementById("addClienteBtn").addEventListener("click", ()=>{
         <option>Otro</option>
       </select>
     </div>
-    <div><label>Observaciones</label><input type="text"></div>
+    <div><label>Observaciones</label><input name="cliente_obs"></div>
   `;
   wrapper.appendChild(card);
   card.scrollIntoView({behavior:'smooth'});
@@ -125,6 +125,7 @@ document.getElementById("addClienteBtn").addEventListener("click", ()=>{
 
 const form=document.getElementById("reporteForm");
 const enviarBtn=document.getElementById("submitBtn");
+
 form.addEventListener("submit", async e=>{
   e.preventDefault();
   if(!document.getElementById("dni").value.trim()||
@@ -138,7 +139,7 @@ form.addEventListener("submit", async e=>{
   enviarBtn.classList.add("bounce");
   setTimeout(()=>enviarBtn.classList.remove("bounce"),420);
 
-  // Crear objeto de datos
+  // Clientes
   const clientes = [];
   document.querySelectorAll(".cliente-card").forEach(c=>{
     const inputs = c.querySelectorAll("input, select");
@@ -151,6 +152,7 @@ form.addEventListener("submit", async e=>{
     });
   });
 
+  // Datos principales
   const data = {
     dni: document.getElementById("dni").value,
     fecha: document.getElementById("fecha").value,
@@ -163,9 +165,9 @@ form.addEventListener("submit", async e=>{
     clientes: clientes
   };
 
-  // Enviar a Google Script usando FormData
-  const formData = new FormData();
-  formData.append("data", JSON.stringify(data));
+  // Enviar a Google Script
+  const formData = new FormData(form);
+  formData.append("clientes", JSON.stringify(clientes));
   try{
     await fetch(GOOGLE_SCRIPT_URL, { method:"POST", body: formData });
     alert("Datos enviados correctamente al servidor.");
@@ -191,15 +193,12 @@ form.addEventListener("submit", async e=>{
   doc.text(`NAP: ${data.nap}`,10,y+=10);
   doc.text("Comentarios:",10,y+=10);
   doc.text(data.comentarios||"-",10,y+=10);
-
   y+=10;
   doc.text("Clientes:",10,y);
   data.clientes.forEach((c,i)=>{
     y+=6;
     doc.text(`${i+1}. ${c.nombre} | ${c.direccion} | ${c.telefono} | ${c.servicio} | ${c.obs}`,10,y);
   });
-
-  doc.save("Reporte_Telecable.pdf");
 
   form.reset();
   wrapper.innerHTML='';
